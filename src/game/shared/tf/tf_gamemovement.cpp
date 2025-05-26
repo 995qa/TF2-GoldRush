@@ -76,6 +76,9 @@ extern ConVar mp_tournament_readymode_countdown;
 //ConVar	tf_waterjump_up( "tf_waterjump_up", "300", FCVAR_REPLICATED | FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 //ConVar	tf_waterjump_forward( "tf_waterjump_forward", "30", FCVAR_REPLICATED | FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 
+ConVar tf_autojump( "tf_autojump", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Automatically jump while holding the jump button down" );
+ConVar tf_duckjump( "tf_duckjump", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Toggles jumping while ducked" );
+
 #define	NUM_CROUCH_HINTS	3
 
 //-----------------------------------------------------------------------------
@@ -957,19 +960,25 @@ bool CTFGameMovement::CheckJumpButton()
 	if ( player->GetFlags() & FL_DUCKING )
 	{
 		// Let a scout do it.
-		bool bAllow = ( bScout && !bOnGround );
+		bool bAllow = ( bScout && !bOnGround)  || tf_duckjump.GetBool();
 
 		if ( !bAllow )
 			return false;
 	}
 
 	// Cannot jump while in the unduck transition.
-	if ( ( player->m_Local.m_bDucking && (  player->GetFlags() & FL_DUCKING ) ) || ( player->m_Local.m_flDuckJumpTime > 0.0f ) )
+	if ( ( player->m_Local.m_bDucking && (  player->GetFlags() & FL_DUCKING ) ) || ( player->m_Local.m_flDuckJumpTime > 0.0f ) && !tf_duckjump.GetBool() )
 		return false;
 
 	// Cannot jump again until the jump button has been released.
 	if ( mv->m_nOldButtons & IN_JUMP )
-		return false;
+	{
+		if ( !bOnGround )
+			return false;
+
+		if ( !tf_autojump.GetBool() )
+			return false;
+	}
 
 	// In air, so ignore jumps 
 	// (unless you are a scout or ghost
